@@ -15,6 +15,10 @@ chromadb==1.5.9
 pypdf==6.13.3
 tiktoken==0.13.0
 gradio==4.44.0
+# Pin jinja2/markupsafe to wheel versions so pip never source-builds an old
+# jinja2 (whose setup.py uses the removed setuptools.Feature -> ImportError).
+jinja2==3.1.6
+markupsafe==2.1.5
 python-dotenv==1.2.2
 pydantic==2.13.4
 huggingface_hub>=0.34,<1.0
