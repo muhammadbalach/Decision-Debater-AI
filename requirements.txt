@@ -14,3 +14,4 @@ tiktoken>=0.7
 gradio>=4.44
 python-dotenv>=1.0
 pydantic>=2.7
+huggingface_hub<0.25
