@@ -1,0 +1,16 @@
+# Secrets
+.env
+*.docx
+read_docx.py
+
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Hugging Face / model cache (if redirected into the project)
+.cache/
+*.egg-info/

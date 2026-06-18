@@ -1,0 +1,12 @@
+.env
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.git
+.github
+.gitignore
+.DS_Store
+*.docx
+read_docx.py
+*.md
