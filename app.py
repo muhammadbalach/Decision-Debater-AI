@@ -38,13 +38,22 @@ from components import (
     verdict_empty_html,
     verdict_html,
 )
-from pipeline import run_debate
+from pipeline import run_debate_stream
 
 
 # ─────────────────── Load CSS from file ───────────────────────────────────────
 
 _CSS_PATH = Path(__file__).parent / "styles.css"
 CSS = _CSS_PATH.read_text(encoding="utf-8")
+
+# Gradio 6 scopes everything passed via `css=` and corrupts the `:root { … }`
+# block (rewriting its selector to an unrelated internal class), which leaves
+# every CSS custom property undefined — so var(--card) etc. fall back to
+# transparent and card backgrounds/borders vanish. Extract the :root block and
+# inject it through gr.Blocks(head=…), which is injected raw into <head> and is
+# NOT scoped, so the variables resolve globally for the whole design.
+_root_match = re.search(r":root\s*\{[^}]*\}", CSS)
+ROOT_VARS_HEAD = f"<style>{_root_match.group(0)}</style>" if _root_match else ""
 
 
 # ─────────────────── Helpers ──────────────────────────────────────────────────
@@ -88,6 +97,23 @@ def _format_score_md(label: str, option: str, body: str, scores: dict,
     return f"### {label}\n\n{body}\n{bars}"
 
 
+def _streaming_md(side: str, option: str | None, body: str) -> str:
+    """Advocate card markdown while tokens are still streaming in.
+
+    No score bars yet — the scores come from the critic, which runs only after
+    both advocates have finished.
+    """
+    icon = "🟢" if side == "a" else "🔵"
+    if option:
+        label = f"{icon} {option}"
+    else:
+        label = "🟢 Option A" if side == "a" else "🔵 Option B"
+    body = body.strip()
+    if not body:
+        return f"### {label}\n\n_Building argument…_"
+    return f"### {label}\n\n{body}"
+
+
 # ─────────────────── Error card ───────────────────────────────────────────────
 
 def _error_card(exc: Exception) -> str:
@@ -117,7 +143,7 @@ def _error_card(exc: Exception) -> str:
 # ─────────────────── Main analyze function ────────────────────────────────────
 
 def analyze(query: str):
-    """Generator: first yield = loading state, second yield = real results."""
+    """Generator: loading → framing → live advocate tokens → final results."""
 
     # ── Validate input ──────────────────────────────────────────────
     if not query or not query.strip():
@@ -143,11 +169,35 @@ def analyze(query: str):
         gr.update(value="⏳ Analysing…", interactive=False),
     )
 
-    # ── Run pipeline ─────────────────────────────────────────────────
+    # ── Run pipeline (streaming the advocate arguments live) ─────────
     t0 = time.perf_counter()
+    option_a = option_b = None
+    r = None
+
+    def _streaming_frame(body_a: str, body_b: str):
+        """7-tuple shown while advocates stream — critic/verdict stay loading."""
+        return (
+            _streaming_md("a", option_a, body_a),
+            _streaming_md("b", option_b, body_b),
+            loading_critic_md(),
+            loading_verdict_html(),
+            pipeline_loading_html(),
+            stats_html(),
+            gr.update(value="⏳ Analysing…", interactive=False),
+        )
 
     try:
-        r = run_debate(query)
+        for event in run_debate_stream(query):
+            kind = event[0]
+            if kind == "framed":
+                meta = event[1]
+                option_a, option_b = meta["option_a"], meta["option_b"]
+                yield _streaming_frame("", "")
+            elif kind in ("advocate_token", "advocates_done"):
+                yield _streaming_frame(event[1], event[2])
+            elif kind == "result":
+                r = event[1]
+                break
     except Exception as exc:
         yield (
             advocate_card_empty("a"),
@@ -158,6 +208,9 @@ def analyze(query: str):
             stats_html(),
             gr.update(value="⚡ Analyze Decision", interactive=True),
         )
+        return
+
+    if r is None:  # stream ended without a result (shouldn't happen) — bail safely
         return
 
     elapsed  = time.perf_counter() - t0
@@ -229,6 +282,7 @@ _THEME = gr.themes.Base(
 
 with gr.Blocks(
     title="Decision Debater AI — Evidence-Based AI Decision Intelligence",
+    head=ROOT_VARS_HEAD,   # global CSS variables (see ROOT_VARS_HEAD above)
 ) as demo:
 
     # ── Navigation ──────────────────────────────────────────────────
@@ -352,6 +406,14 @@ with gr.Blocks(
 # ─────────────────── Entry point ──────────────────────────────────────────────
 
 if __name__ == "__main__":
+    # Warm the embedding model + vector store in the background while Gradio boots,
+    # so the first user query doesn't eat the cold-start model-load penalty.
+    import threading
+
+    from retrieval import warm_up
+
+    threading.Thread(target=warm_up, daemon=True).start()
+
     _launch_kwargs = dict(
         server_name=config.SERVER_NAME,
         theme=_THEME,

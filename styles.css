@@ -5,6 +5,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /* ─────────────────── CSS CUSTOM PROPERTIES ─────────────────── */
+/* NOTE: Gradio 6 scopes anything passed via `css=` and corrupts this :root
+   block (it rewrites the selector to an unrelated internal class), leaving
+   every var(--*) undefined. To make these resolve globally, app.py also injects
+   this same :root block verbatim through gr.Blocks(head=…), which is NOT scoped.
+   Keep this block here as the source of truth — app.py extracts it by regex. */
 :root {
   --bg:          #0B1120;
   --bg-2:        #111827;
@@ -38,6 +43,13 @@
   background: var(--bg) !important;
   font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
   color: var(--text) !important;
+  /* width:100% gives the container a DEFINITE width (resolved against the
+     parent, then capped by max-width) instead of one derived from its content.
+     The container is a flex item with `margin:0 auto`; auto cross-axis margins
+     disable flex stretch, so without an explicit width it shrink-wraps to its
+     content — making the whole page narrow while the loading skeletons (which
+     are narrower than the results) are shown. An explicit width keeps it static. */
+  width: 100% !important;
   max-width: 1280px !important;
   margin: 0 auto !important;
   padding: 0 !important;
@@ -276,7 +288,10 @@ footer { display: none !important; }
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 14px;
-  margin: 40px 40px 0;
+  /* 32px horizontal inset = the navbar's own `padding: 0 32px`, so the four
+     equal-width (1fr) cards line up exactly with the header's content: card #1
+     left edge matches the brand, card #4 right edge matches the status. */
+  margin: 40px 32px 0;
   padding: 0;
 }
 

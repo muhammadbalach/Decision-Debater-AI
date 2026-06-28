@@ -31,6 +31,17 @@ def get_vectorstore():
     )
 
 
+def warm_up() -> None:
+    """Eagerly load the embedding model + vector store so the FIRST user query
+    doesn't pay the (multi-second, CPU) cold-start cost. Safe to call from a
+    background thread at startup; any failure is swallowed so launch never breaks.
+    """
+    try:
+        get_retriever().invoke("warm up")
+    except Exception:
+        pass
+
+
 def get_retriever(domain: str | None = None):
     """Return a retriever, optionally domain-filtered and/or reranked."""
     vs = get_vectorstore()
