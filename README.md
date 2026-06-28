@@ -8,24 +8,8 @@ scores each side on a weighted rubric and renders a structured verdict — behin
 Gradio UI.
 
 ## Architecture
+<img width="1536" height="1024" alt="ChatGPT Image Jun 24, 2026, 06_13_31 PM (2)" src="https://github.com/user-attachments/assets/82bef7ff-3d58-4d19-b08f-6f9917568be1" />
 
-Three sequential stages, ~4 LLM calls per query:
-
-```
-Query
-  │
-  ▼
-1. Framing / Router  (fast model)  → option_a, option_b, route ∈ {RAG, WEB, BOTH}
-  │
-  ▼
-2. Context retrieval               → BGE/Chroma RAG  ⊕  cleaned Tavily web results
-  │
-  ▼
-3. Advocate A  ║  Advocate B       → run concurrently (RunnableParallel)
-  │
-  ▼
-4. Critic-Judge (structured)       → critique + per-option scores → weighted verdict
-```
 
 | Concern        | Choice |
 |----------------|--------|
