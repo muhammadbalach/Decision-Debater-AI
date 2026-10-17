@@ -53,7 +53,7 @@ Optional but recommended. Drop PDFs / `.txt` / `.md` into `docs/`. Sub-folders b
 python ingest.py
 ```
 
-The app works with an **empty** store too — RAG context simply reports that no documents
+The app works with an **empty** store too — (Retrieval Augmented Generation) RAG context simply reports that no documents
 are indexed and the debate proceeds on web search / reasoning.
 
 ## Run
