@@ -81,10 +81,11 @@ pipeline.py    # run_debate() orchestration + weighted scoring
 app.py         # Gradio UI
 docs/          # your knowledge base (domain sub-folders)
 ```
-## License
-Decision-Debater-AI (2026). All Rights Reserved. Owned by Zevron Studio
 ## Possible enhancements
 
 - Stream agent outputs token-by-token into the UI.
 - Per-domain retrieval filtering surfaced as a UI control.
 - LLM-based reranking as an alternative to the cross-encoder.
+
+## License
+Decision-Debater-AI (2026). All Rights Reserved. Owned by Zevron Studio
